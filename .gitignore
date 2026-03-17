@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Agent internal (conversation context)
+.gemini/
+
+# Helm default values (참조용이지만 용량이 크므로 선택적 추적)
+# src/*/default-values.yaml
+
+# Temporary
+*.tmp
+*.bak

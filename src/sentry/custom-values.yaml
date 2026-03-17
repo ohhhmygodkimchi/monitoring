@@ -1,0 +1,157 @@
+# ============================================================
+# Sentry (Self-Hosted) - Custom Values Override
+# Chart: sentry/sentry
+# Namespace: sentry
+# ============================================================
+# 주의: Sentry Self-Hosted는 리소스 요구량이 높습니다. (최소 8GB RAM 권장)
+# 사전에 K8s Secret 생성 필요:
+#   kubectl create secret generic sentry-postgres-secret \
+#     --namespace sentry \
+#     --from-literal=postgres-password=<SECURE_PASSWORD>
+#   kubectl create secret generic sentry-admin-secret \
+#     --namespace sentry \
+#     --from-literal=admin-password=<SECURE_PASSWORD>
+# ============================================================
+
+# ----------------------------------------------------------
+# 초기 관리자 계정
+# ----------------------------------------------------------
+user:
+  create: true
+  email: admin@example.com
+  # [REQ-N-06] 비밀번호는 Secret으로 주입
+  existingSecret: sentry-admin-secret
+  existingSecretKey: admin-password
+
+# ----------------------------------------------------------
+# Sentry Web (API Server + UI)
+# ----------------------------------------------------------
+sentry:
+  web:
+    replicaCount: 1
+    # [REQ-N-01] 자원 제한
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    env:
+      - name: SENTRY_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: sentry-secret-key
+            key: secret-key
+
+  worker:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "1"
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+  cron:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+# ----------------------------------------------------------
+# NodePort 서비스
+# ----------------------------------------------------------
+service:
+  type: NodePort
+  externalPort: 9000
+  nodePort: 30090
+
+# ----------------------------------------------------------
+# Ingress (비활성화 - NodePort 사용)
+# ----------------------------------------------------------
+ingress:
+  enabled: false
+
+# ----------------------------------------------------------
+# PostgreSQL (메타데이터 저장)
+# ----------------------------------------------------------
+postgresql:
+  enabled: true
+  auth:
+    existingSecret: sentry-postgres-secret
+    secretKeys:
+      adminPasswordKey: postgres-password
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: local-path
+    resources:
+      limits:
+        cpu: "1"
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# ----------------------------------------------------------
+# Redis (캐시 및 큐)
+# ----------------------------------------------------------
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: local-path
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# ----------------------------------------------------------
+# ClickHouse (이벤트 데이터 저장)
+# ----------------------------------------------------------
+clickhouse:
+  enabled: true
+  clickhouse:
+    replicas: 1
+    persistentVolumeClaim:
+      enabled: true
+      dataPersistentVolume:
+        enabled: true
+        storageClassName: local-path
+        size: 30Gi
+    resources:
+      limits:
+        cpu: "2"
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+# ----------------------------------------------------------
+# Kafka (이벤트 버퍼링 - 소규모 환경에서는 비활성화)
+# ----------------------------------------------------------
+kafka:
+  enabled: false
+
+# ----------------------------------------------------------
+# [REQ-N-02] 데이터 보존: 90일
+# ----------------------------------------------------------
+sentry-cleanup:
+  enabled: true
+  days: 90
+  schedule: "0 2 * * *"                 # 매일 02시에 정리 작업 실행

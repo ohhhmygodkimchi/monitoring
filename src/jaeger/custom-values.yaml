@@ -1,0 +1,109 @@
+# ============================================================
+# Jaeger - Custom Values Override
+# Chart: jaegertracing/jaeger
+# Namespace: tracing
+# ============================================================
+
+# ----------------------------------------------------------
+# 스토리지 백엔드 설정
+# ----------------------------------------------------------
+provisionDataStore:
+  cassandra: false
+  elasticsearch: true
+
+storage:
+  type: elasticsearch
+
+# ----------------------------------------------------------
+# Elasticsearch (내장 배포)
+# ----------------------------------------------------------
+elasticsearch:
+  replicas: 1                           # 온프레미스 최소 구성
+  minimumMasterNodes: 1
+  antiAffinity: "soft"
+
+  # 스토리지
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    storageClassName: local-path
+    resources:
+      requests:
+        storage: 30Gi
+
+  # [REQ-N-01] 자원 제한
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+  # JVM 힙 설정 (메모리의 50%)
+  esJavaOpts: "-Xmx1g -Xms1g"
+
+# ----------------------------------------------------------
+# Jaeger Collector
+# ----------------------------------------------------------
+collector:
+  replicaCount: 2
+  autoscaling:
+    enabled: false
+
+  # [REQ-N-01] 자원 제한
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  service:
+    # Otel Collector에서 OTLP로 전송할 포트
+    otlp:
+      grpc:
+        port: 4317
+      http:
+        port: 4318
+
+# ----------------------------------------------------------
+# Jaeger Query (UI)
+# ----------------------------------------------------------
+query:
+  replicaCount: 1
+
+  # NodePort로 외부 접근 허용
+  service:
+    type: NodePort
+    port: 16686
+    nodePort: 30086
+
+  # [REQ-N-01] 자원 제한
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# ----------------------------------------------------------
+# Jaeger Agent (사용하지 않음 - Otel Collector가 대체)
+# ----------------------------------------------------------
+agent:
+  enabled: false
+
+# ----------------------------------------------------------
+# [REQ-N-02] 데이터 보존: 7일
+# ----------------------------------------------------------
+spark:
+  enabled: true
+  schedule: "0 3 * * *"                 # 매일 03시에 정리 작업 실행
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+
+esIndexCleaner:
+  enabled: true
+  schedule: "0 4 * * *"                 # 매일 04시에 오래된 인덱스 삭제
+  numberOfDays: 7

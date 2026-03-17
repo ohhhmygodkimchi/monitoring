@@ -1,0 +1,84 @@
+# ============================================================
+# OpenTelemetry Collector - Custom Values Override
+# Chart: open-telemetry/opentelemetry-collector
+# Namespace: tracing
+# ============================================================
+
+# DaemonSet 모드: 각 노드에 1개씩 배포하여 로컬 앱의 OTLP 데이터 수신
+mode: daemonset
+
+# ----------------------------------------------------------
+# Collector 파이프라인 설정
+# ----------------------------------------------------------
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    # 배치 처리로 백엔드 부하 경감
+    batch:
+      timeout: 5s
+      send_batch_size: 512
+      send_batch_max_size: 1024
+
+    # [REQ-N-01] 메모리 제한으로 OOM 방지
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 400
+      spike_limit_mib: 100
+
+  exporters:
+    # Traces → Jaeger (OTLP/gRPC)
+    otlp/jaeger:
+      endpoint: "jaeger-collector.tracing.svc.cluster.local:4317"
+      tls:
+        insecure: true
+
+    # Metrics → Prometheus (Remote Write)
+    prometheusremotewrite:
+      endpoint: "http://kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+      tls:
+        insecure: true
+
+  # 파이프라인 연결
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/jaeger]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [prometheusremotewrite]
+
+# ----------------------------------------------------------
+# 포트 설정
+# ----------------------------------------------------------
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+
+# ----------------------------------------------------------
+# [REQ-N-01] 자원 제한
+# ----------------------------------------------------------
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
