@@ -13,8 +13,8 @@ loki:
   # 영구 스토리지
   persistence:
     enabled: true
-    size: 100Gi
-    storageClassName: local-path
+    size: 25Gi
+    storageClassName: rook-cephfs
 
   # Loki 설정
   config:
@@ -24,8 +24,6 @@ loki:
     # Ingester 설정
     ingester:
       chunk_idle_period: 30m
-      chunk_block_period: 5m
-      chunk_retain_period: 1m
       max_transfer_retries: 0
       lifecycler:
         ring:

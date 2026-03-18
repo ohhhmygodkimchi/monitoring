@@ -70,7 +70,7 @@ sentry:
 service:
   type: NodePort
   externalPort: 9000
-  nodePort: 30090
+  nodePort: 30590
 
 # ----------------------------------------------------------
 # Ingress (비활성화 - NodePort 사용)
@@ -91,7 +91,7 @@ postgresql:
     persistence:
       enabled: true
       size: 20Gi
-      storageClass: local-path
+      storageClass: rook-cephfs
     resources:
       limits:
         cpu: "1"
@@ -112,7 +112,7 @@ redis:
     persistence:
       enabled: true
       size: 5Gi
-      storageClass: local-path
+      storageClass: rook-cephfs
     resources:
       limits:
         cpu: 500m
@@ -132,8 +132,8 @@ clickhouse:
       enabled: true
       dataPersistentVolume:
         enabled: true
-        storageClassName: local-path
-        size: 30Gi
+        storageClassName: rook-cephfs
+        size: 20Gi
     resources:
       limits:
         cpu: "2"
@@ -148,6 +148,11 @@ clickhouse:
 kafka:
   enabled: false
 
+# Kafka 내장 비활성화 시 externalKafka 설정을 필수로 요구하므로 빈/더미 값 입력
+externalKafka:
+  host: "localhost"
+  port: 9092
+
 # ----------------------------------------------------------
 # [REQ-N-02] 데이터 보존: 90일
 # ----------------------------------------------------------
@@ -155,3 +160,19 @@ sentry-cleanup:
   enabled: true
   days: 90
   schedule: "0 2 * * *"                 # 매일 02시에 정리 작업 실행
+
+# ----------------------------------------------------------
+# 토큰/스토리지 클래스 누락 해결 (RabbitMQ, Filestore, Snuba Service Type)
+# ----------------------------------------------------------
+rabbitmq:
+  persistence:
+    storageClass: rook-cephfs
+
+filestore:
+  filesystem:
+    persistence:
+      storageClass: rook-cephfs
+
+snuba:
+  service:
+    type: ClusterIP

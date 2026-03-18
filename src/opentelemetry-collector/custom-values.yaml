@@ -7,6 +7,11 @@
 # DaemonSet 모드: 각 노드에 1개씩 배포하여 로컬 앱의 OTLP 데이터 수신
 mode: daemonset
 
+# 명시적 이미지 저장소 및 버전 태깅
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.109.0"  # 버전 고정 (필요시 업데이트)
+
 # ----------------------------------------------------------
 # Collector 파이프라인 설정
 # ----------------------------------------------------------
@@ -56,6 +61,9 @@ config:
         receivers: [otlp]
         processors: [memory_limiter, batch]
         exporters: [prometheusremotewrite]
+    telemetry:
+      metrics:
+        address: 0.0.0.0:8889
 
 # ----------------------------------------------------------
 # 포트 설정
@@ -70,6 +78,11 @@ ports:
     enabled: true
     containerPort: 4318
     servicePort: 4318
+    protocol: TCP
+  metrics:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
     protocol: TCP
 
 # ----------------------------------------------------------

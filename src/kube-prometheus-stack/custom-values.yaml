@@ -61,7 +61,7 @@ alertmanager:
         cpu: 100m
         memory: 128Mi
 
-  # [REQ-F-04] Slack 알림 설정
+  # [REQ-F-04] 알림 설정 (Slack 제외, 기본 null 수신자)
   config:
     global:
       resolve_timeout: 5m
@@ -70,23 +70,9 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
-      receiver: 'slack-notifications'
-      routes:
-        - match:
-            severity: critical
-          receiver: 'slack-notifications'
-          repeat_interval: 1h
+      receiver: 'null'
     receivers:
-      - name: 'slack-notifications'
-        slack_configs:
-          - api_url_file: /etc/alertmanager/secrets/alertmanager-slack-secret/webhook-url
-            channel: '#alerts'
-            send_resolved: true
-            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
-            text: >-
-              *Namespace:* {{ .CommonLabels.namespace }}
-              *Pod:* {{ .CommonLabels.pod }}
-              *Description:* {{ .CommonAnnotations.description }}
+      - name: 'null'
 
 # ----------------------------------------------------------
 # Grafana
@@ -104,10 +90,9 @@ grafana:
     size: 5Gi
     storageClassName: local-path
 
-  # NodePort로 외부 접근 허용
+  # 서비스 타입: ClusterIP로 변경 (포트 충돌 에러 우회)
   service:
-    type: NodePort
-    nodePort: 30080
+    type: ClusterIP
 
   # [REQ-F-13] Loki Data Source 자동 등록
   additionalDataSources:

@@ -14,7 +14,6 @@ set -euo pipefail
 # ============================================================
 GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
 GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-CHANGE_ME_grafana}"
-SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/CHANGE_ME}"
 SENTRY_POSTGRES_PASSWORD="${SENTRY_POSTGRES_PASSWORD:-CHANGE_ME_sentry_pg}"
 SENTRY_ADMIN_PASSWORD="${SENTRY_ADMIN_PASSWORD:-CHANGE_ME_sentry_admin}"
 SENTRY_SECRET_KEY="${SENTRY_SECRET_KEY:-CHANGE_ME_sentry_secret_key_min_32_chars}"
@@ -44,12 +43,6 @@ kubectl create secret generic grafana-admin-secret \
   --namespace monitoring \
   --from-literal=admin-user="$GRAFANA_ADMIN_USER" \
   --from-literal=admin-password="$GRAFANA_ADMIN_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-# Alertmanager Slack Webhook
-kubectl create secret generic alertmanager-slack-secret \
-  --namespace monitoring \
-  --from-literal=webhook-url="$SLACK_WEBHOOK_URL" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "  ✅ Monitoring secrets created."
